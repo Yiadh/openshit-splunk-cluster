@@ -1,0 +1,237 @@
+---
+apiVersion: v1
+kind: Template
+labels:
+  app: splunk-ephemeral
+  template: splunk-ephemeral-template
+message: A Jenkins service has been created in your project.  Log into Jenkins with
+  your OpenShift account.  The tutorial at https://github.com/openshift/origin/blob/master/examples/jenkins/README.md
+  contains more information about using this template.
+metadata:
+  annotations:
+    description: |-
+      Jenkins service, without persistent storage.
+
+      WARNING: Any data stored will be lost upon pod destruction. Only use this template for testing.
+    iconClass: icon-jenkins
+    openshift.io/display-name: Splunk (Ephemeral)
+    openshift.io/documentation-url: https://docs.okd.io/latest/using_images/other_images/jenkins.html
+    openshift.io/long-description: This template deploys a Jenkins server capable
+    openshift.io/provider-display-name: Red Hat, Inc.
+    openshift.io/support-url: https://access.redhat.com
+    tags: instant-app,splunk,index,log,logging,indexing
+  name: splunk-ephemeral
+
+objects:
+
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      template.alpha.openshift.io/wait-for-ready: 'true'
+    name: splunk-deployment-server
+  spec:
+    replicas: 1
+    selector:
+      name: splunk-deployment-server
+    strategy:
+      type: Recreate
+    template:
+      metadata:
+        labels:
+          name: splunk-deployment-server
+      spec:
+        containers:
+        - name: splunk-deployment-server
+          image: "splunk/splunk"
+          imagePullPolicy: IfNotPresent
+          capabilities: {}
+          env:
+          - name: SPLUNK_ENABLE_DEPLOY_SERVER
+            value: "true"
+          - name: SPLUNK_START_ARGS
+            value: "--accept-license"
+          - name: SPLUNK_PASSWORD
+            value: "password"
+          resources:
+            limits:
+              memory: 300Mi
+          securityContext:
+            capabilities: {}
+            privileged: false
+          terminationMessagePath: "/dev/termination-log"
+          volumeMounts:
+          - mountPath: "/opt/splunk/var/lib/splunk"
+            name: "splunk-data"
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        volumes:
+        - emptyDir:
+            medium: ''
+          name: "splunk-data"
+    triggers:
+    - type: ConfigChange
+
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      template.alpha.openshift.io/wait-for-ready: 'true'
+    name: splunk-indexer
+  spec:
+    replicas: 1
+    selector:
+      name: splunk-indexer
+    strategy:
+      type: Recreate
+    template:
+      metadata:
+        labels:
+          name: splunk-indexer
+      spec:
+        containers:
+        - name: splunk-indexer
+          image: "splunk/splunk"
+          imagePullPolicy: IfNotPresent
+          capabilities: {}
+          env:
+          - name: SPLUNK_ENABLE_LISTEN
+            value: "9997"
+          - name: SPLUNK_START_ARGS
+            value: "--accept-license"
+          - name: SPLUNK_PASSWORD
+            value: "password"
+          resources:
+            limits:
+              memory: 300Mi
+          securityContext:
+            capabilities: {}
+            privileged: false
+          terminationMessagePath: "/dev/termination-log"
+          volumeMounts:
+          - mountPath: "/opt/splunk/var/lib/splunk"
+            name: "splunk-data"
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        volumes:
+        - emptyDir:
+            medium: ''
+          name: "splunk-data"
+    triggers:
+    - type: ConfigChange
+
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      template.alpha.openshift.io/wait-for-ready: 'true'
+    name: splunk-forwarder
+  spec:
+    replicas: 1
+    selector:
+      name: splunk-forwarder
+    strategy:
+      type: Recreate
+    template:
+      metadata:
+        labels:
+          name: splunk-forwarder
+      spec:
+        containers:
+        - name: splunk-forwarder
+          image: "splunk/universalforwarder"
+          imagePullPolicy: IfNotPresent
+          capabilities: {}
+          env:
+          - name: SPLUNK_FORWARD_SERVER
+            value: "splunk-indexer:9997"
+          - name: SPLUNK_FORWARD_SERVER_ARGS
+            value: "-method clone"
+          - name: SPLUNK_ADD
+            value: "udp 1514"
+          - name: SPLUNK_DEPLOYMENT_SERVER
+            value: "splunk-deployment-server:8089"
+          - name: SPLUNK_START_ARGS
+            value: "--accept-license"
+          - name: SPLUNK_PASSWORD
+            value: "password"
+          resources:
+            limits:
+              memory: 300Mi
+          securityContext:
+            capabilities: {}
+            privileged: false
+          terminationMessagePath: "/dev/termination-log"
+          volumeMounts:
+          - mountPath: "/opt/splunkforwarder/var/lib/splunk"
+            name: "splunk-data"
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        volumes:
+        - emptyDir:
+            medium: ''
+          name: "splunk-data"
+    triggers:
+    - type: ConfigChange
+
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: splunk-indexer
+  spec:
+    ports:
+    - name: web
+      port: 80
+      protocol: TCP
+      targetPort: 8000
+    - name: listen
+      port: 9997
+      protocol: TCP
+      targetPort: 9997
+    selector:
+      name: splunk-indexer
+    sessionAffinity: None
+    type: ClusterIP
+
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: splunk-deployment-server
+  spec:
+    ports:
+    - name: web
+      port: 80
+      protocol: TCP
+      targetPort: 8000
+    - name: listen
+      port: 8089
+      protocol: TCP
+      targetPort: 8089
+    selector:
+      name: splunk-deployment-server
+    sessionAffinity: None
+    type: ClusterIP
+
+- apiVersion: v1
+  kind: Route
+  metadata:
+    name: splunk-indexer
+  spec:
+    tls:
+      insecureEdgeTerminationPolicy: Redirect
+      termination: edge
+    to:
+      kind: Service
+      name: splunk-indexer
+
+- apiVersion: v1
+  kind: Route
+  metadata:
+    name: splunk-deployment-server
+  spec:
+    tls:
+      insecureEdgeTerminationPolicy: Redirect
+      termination: edge
+    to:
+      kind: Service
+      name: splunk-deployment-server
