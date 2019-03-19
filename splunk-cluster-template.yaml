@@ -4,7 +4,8 @@ kind: Template
 labels:
   app: splunk-ephemeral
   template: splunk-ephemeral-template
-message: A Splunk cluster has been created in your project. The deployed cluster contains: Splunk Forwarder, Deployment Server and Splunk Indexer/Search Head.
+message: A Splunk cluster has been created in your project.
+  The deployed cluster contains a Splunk Forwarder, Deployment Server and Splunk Indexer/SearchHead.
 metadata:
   annotations:
     description: |-
