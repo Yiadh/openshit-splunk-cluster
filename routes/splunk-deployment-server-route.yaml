@@ -1,0 +1,11 @@
+  apiVersion: v1
+  kind: Route
+  metadata:
+    name: splunk-deployment-server
+  spec:
+    tls:
+      insecureEdgeTerminationPolicy: Redirect
+      termination: edge
+    to:
+      kind: Service
+      name: splunk-deployment-server

@@ -1,0 +1,47 @@
+  apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      template.alpha.openshift.io/wait-for-ready: 'true'
+    name: splunk-deployment-server
+  spec:
+    replicas: 1
+    selector:
+      name: splunk-deployment-server
+    strategy:
+      type: Recreate
+    template:
+      metadata:
+        labels:
+          name: splunk-deployment-server
+      spec:
+        containers:
+        - name: splunk-deployment-server
+          image: "splunk/splunk"
+          imagePullPolicy: IfNotPresent
+          capabilities: {}
+          env:
+          - name: SPLUNK_ENABLE_DEPLOY_SERVER
+            value: "true"
+          - name: SPLUNK_START_ARGS
+            value: "--accept-license"
+          - name: SPLUNK_PASSWORD
+            value: "password"
+          resources:
+            limits:
+              memory: 300Mi
+          securityContext:
+            capabilities: {}
+            privileged: false
+          terminationMessagePath: "/dev/termination-log"
+          volumeMounts:
+          - mountPath: "/opt/splunk/var/lib/splunk"
+            name: "splunk-data"
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        volumes:
+        - emptyDir:
+            medium: ''
+          name: "splunk-data"
+    triggers:
+    - type: ConfigChange

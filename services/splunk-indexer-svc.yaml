@@ -1,0 +1,18 @@
+  apiVersion: v1
+  kind: Service
+  metadata:
+    name: splunk-indexer
+  spec:
+    ports:
+    - name: web
+      port: 80
+      protocol: TCP
+      targetPort: 8000
+    - name: listen
+      port: 9997
+      protocol: TCP
+      targetPort: 9997
+    selector:
+      name: splunk-indexer
+    sessionAffinity: None
+    type: ClusterIP

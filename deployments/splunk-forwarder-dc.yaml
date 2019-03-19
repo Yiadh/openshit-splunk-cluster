@@ -1,0 +1,53 @@
+  apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      template.alpha.openshift.io/wait-for-ready: 'true'
+    name: splunk-forwarder
+  spec:
+    replicas: 1
+    selector:
+      name: splunk-forwarder
+    strategy:
+      type: Recreate
+    template:
+      metadata:
+        labels:
+          name: splunk-forwarder
+      spec:
+        containers:
+        - name: splunk-forwarder
+          image: "splunk/universalforwarder"
+          imagePullPolicy: IfNotPresent
+          capabilities: {}
+          env:
+          - name: SPLUNK_FORWARD_SERVER
+            value: "splunk-indexer:9997"
+          - name: SPLUNK_FORWARD_SERVER_ARGS
+            value: "-method clone"
+          - name: SPLUNK_ADD
+            value: "udp 1514"
+          - name: SPLUNK_DEPLOYMENT_SERVER
+            value: "splunk-deployment-server:8089"
+          - name: SPLUNK_START_ARGS
+            value: "--accept-license"
+          - name: SPLUNK_PASSWORD
+            value: "password"
+          resources:
+            limits:
+              memory: 300Mi
+          securityContext:
+            capabilities: {}
+            privileged: false
+          terminationMessagePath: "/dev/termination-log"
+          volumeMounts:
+          - mountPath: "/opt/splunkforwarder/var/lib/splunk"
+            name: "splunk-data"
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        volumes:
+        - emptyDir:
+            medium: ''
+          name: "splunk-data"
+    triggers:
+    - type: ConfigChange

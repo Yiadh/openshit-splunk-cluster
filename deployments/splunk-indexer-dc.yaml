@@ -1,0 +1,47 @@
+  apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      template.alpha.openshift.io/wait-for-ready: 'true'
+    name: splunk-indexer
+  spec:
+    replicas: 1
+    selector:
+      name: splunk-indexer
+    strategy:
+      type: Recreate
+    template:
+      metadata:
+        labels:
+          name: splunk-indexer
+      spec:
+        containers:
+        - name: splunk-indexer
+          image: "splunk/splunk"
+          imagePullPolicy: IfNotPresent
+          capabilities: {}
+          env:
+          - name: SPLUNK_ENABLE_LISTEN
+            value: "9997"
+          - name: SPLUNK_START_ARGS
+            value: "--accept-license"
+          - name: SPLUNK_PASSWORD
+            value: "password"
+          resources:
+            limits:
+              memory: 300Mi
+          securityContext:
+            capabilities: {}
+            privileged: false
+          terminationMessagePath: "/dev/termination-log"
+          volumeMounts:
+          - mountPath: "/opt/splunk/var/lib/splunk"
+            name: "splunk-data"
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        volumes:
+        - emptyDir:
+            medium: ''
+          name: "splunk-data"
+    triggers:
+    - type: ConfigChange

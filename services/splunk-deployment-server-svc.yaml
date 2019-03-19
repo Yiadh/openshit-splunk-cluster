@@ -1,0 +1,18 @@
+  apiVersion: v1
+  kind: Service
+  metadata:
+    name: splunk-deployment-server
+  spec:
+    ports:
+    - name: web
+      port: 80
+      protocol: TCP
+      targetPort: 8000
+    - name: listen
+      port: 8089
+      protocol: TCP
+      targetPort: 8089
+    selector:
+      name: splunk-deployment-server
+    sessionAffinity: None
+    type: ClusterIP
